@@ -92,7 +92,7 @@ export default function SignIn() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                maxLength={8}
+                                minLength={8}
                                 className="border-gray-300 focus:border-primary focus:ring-primary"
                             />
                         </div>
