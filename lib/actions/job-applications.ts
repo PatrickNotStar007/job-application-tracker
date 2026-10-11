@@ -151,7 +151,7 @@ export async function updateJobApplication(
 
         const jobsInTargetColumn = await JobApplication.find({
             columnId: newColumnId,
-            _id: { $ne: id },
+            // _id: { $ne: id },
         })
             .sort({ order: 1 })
             .lean();
@@ -163,7 +163,7 @@ export async function updateJobApplication(
 
             const jobsThatNeedToShift = jobsInTargetColumn.slice(order);
 
-            for (const job of jobsInTargetColumn) {
+            for (const job of jobsThatNeedToShift) {
                 await JobApplication.findByIdAndUpdate(job._id, {
                     $set: { order: job.order + 100 },
                 });
@@ -238,4 +238,32 @@ export async function updateJobApplication(
     revalidatePath("/dashboard");
 
     return { data: JSON.parse(JSON.stringify(updated)) };
+}
+
+export async function deleteJobApplication(id: string) {
+    const session = await getSession();
+
+    if (!session?.user) {
+        return { error: "Unauthorized" };
+    }
+
+    const jobApplication = await JobApplication.findById(id);
+
+    if (!jobApplication) {
+        return { error: "Job application not found" };
+    }
+
+    if (jobApplication.userId !== session.user.id) {
+        return { error: "Unauthorized" };
+    }
+
+    await Column.findByIdAndDelete(id, {
+        $pull: { jobApplications: id },
+    });
+
+    await JobApplication.deleteOne({ _id: id });
+
+    revalidatePath("/dashboard");
+
+    return { success: true };
 }
