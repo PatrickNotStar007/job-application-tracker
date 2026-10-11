@@ -8,6 +8,7 @@ import {
     DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
+import { updateJobApplication } from "@/lib/actions/job-applications";
 
 interface JobApplicationCardProps {
     job: JobApplication;
@@ -18,6 +19,16 @@ export default function JobApplicationCard({
     job,
     columns,
 }: JobApplicationCardProps) {
+    async function handleMove(newColumnId: string) {
+        try {
+            const result = await updateJobApplication(job._id, {
+                columnId: newColumnId,
+            });
+        } catch (error) {
+            console.error("Failed to move job application: ", error);
+        }
+    }
+
     return (
         <>
             <Card className="cursor-pointer transition-shadow hover:shadow-lg bg-white group shadow-sm">
@@ -82,8 +93,15 @@ export default function JobApplicationCard({
                                                     (c) =>
                                                         c._id !== job.columnId,
                                                 )
-                                                .map((column) => (
-                                                    <DropdownMenuItem>
+                                                .map((column, key) => (
+                                                    <DropdownMenuItem
+                                                        key={key}
+                                                        onClick={() =>
+                                                            handleMove(
+                                                                column._id,
+                                                            )
+                                                        }
+                                                    >
                                                         Move to {column.name}
                                                     </DropdownMenuItem>
                                                 ))}
