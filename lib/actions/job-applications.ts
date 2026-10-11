@@ -28,22 +28,23 @@ export async function createJobApplication(data: JobApplicationData) {
     await connectDB();
 
     const {
-        boardId,
-        columnId,
         company,
         position,
-        description,
-        jobUrl,
         location,
         notes,
         salary,
+        jobUrl,
+        columnId,
+        boardId,
         tags,
+        description,
     } = data;
 
     if (!company || !position || !columnId || !boardId) {
         return { error: "Missing required fields" };
     }
 
+    // Verify board ownership
     const board = await Board.findOne({
         _id: boardId,
         userId: session.user.id,
@@ -53,9 +54,11 @@ export async function createJobApplication(data: JobApplicationData) {
         return { error: "Board not found" };
     }
 
+    // Verify column belongs to board
+
     const column = await Column.findOne({
         _id: columnId,
-        boardId: board.id,
+        boardId: boardId,
     });
 
     if (!column) {
@@ -68,17 +71,17 @@ export async function createJobApplication(data: JobApplicationData) {
         .lean()) as { order: number } | null;
 
     const jobApplication = await JobApplication.create({
-        boardId,
-        columnId,
         company,
         position,
-        description,
-        jobUrl,
         location,
         notes,
         salary,
+        jobUrl,
+        columnId,
+        boardId,
         userId: session.user.id,
         tags: tags || [],
+        description,
         status: "applied",
         order: maxOrder ? maxOrder.order + 1 : 0,
     });
@@ -151,7 +154,7 @@ export async function updateJobApplication(
 
         const jobsInTargetColumn = await JobApplication.find({
             columnId: newColumnId,
-            // _id: { $ne: id },
+            _id: { $ne: id },
         })
             .sort({ order: 1 })
             .lean();
@@ -162,7 +165,6 @@ export async function updateJobApplication(
             newOrderValue = order * 100;
 
             const jobsThatNeedToShift = jobsInTargetColumn.slice(order);
-
             for (const job of jobsThatNeedToShift) {
                 await JobApplication.findByIdAndUpdate(job._id, {
                     $set: { order: job.order + 100 },
@@ -197,17 +199,17 @@ export async function updateJobApplication(
         const currentPositionIndex = otherJobsInColumn.findIndex(
             (job) => job.order > currentJobOrder,
         );
-        const oldPositionIndex =
+        const oldPositionindex =
             currentPositionIndex === -1
                 ? otherJobsInColumn.length
                 : currentPositionIndex;
 
         const newOrderValue = order * 100;
 
-        if (order < oldPositionIndex) {
+        if (order < oldPositionindex) {
             const jobsToShiftDown = otherJobsInColumn.slice(
                 order,
-                oldPositionIndex,
+                oldPositionindex,
             );
 
             for (const job of jobsToShiftDown) {
@@ -215,9 +217,9 @@ export async function updateJobApplication(
                     $set: { order: job.order + 100 },
                 });
             }
-        } else if (order > oldPositionIndex) {
+        } else if (order > oldPositionindex) {
             const jobsToShiftUp = otherJobsInColumn.slice(
-                oldPositionIndex,
+                oldPositionindex,
                 order,
             );
             for (const job of jobsToShiftUp) {
@@ -257,12 +259,11 @@ export async function deleteJobApplication(id: string) {
         return { error: "Unauthorized" };
     }
 
-    await Column.findByIdAndDelete(id, {
+    await Column.findByIdAndUpdate(jobApplication.columnId, {
         $pull: { jobApplications: id },
     });
 
     await JobApplication.deleteOne({ _id: id });
-
     revalidatePath("/dashboard");
 
     return { success: true };

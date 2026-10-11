@@ -1,6 +1,8 @@
-import { Column, JobApplication } from "@/lib/models/models.types";
+"use client";
+
+import { JobApplication, Column } from "@/lib/models/models.types";
 import { Card, CardContent } from "./ui/card";
-import { Edit2, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
+import { Edit2, ExternalLink, MoreVertical, Plus, Trash2 } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,20 +21,21 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "./ui/dialog";
-import { Textarea } from "./ui/textarea";
+} from "@/components/ui/dialog";
 import { Label } from "./ui/label";
-import { useState } from "react";
 import { Input } from "./ui/input";
-
+import { Textarea } from "./ui/textarea";
+import React, { useState } from "react";
 interface JobApplicationCardProps {
     job: JobApplication;
     columns: Column[];
+    dragHandleProps?: React.HTMLAttributes<HTMLElement>;
 }
 
 export default function JobApplicationCard({
     job,
     columns,
+    dragHandleProps,
 }: JobApplicationCardProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
@@ -42,27 +45,27 @@ export default function JobApplicationCard({
         notes: job.notes || "",
         salary: job.salary || "",
         jobUrl: job.jobUrl || "",
+        columnId: job.columnId || "",
         tags: job.tags?.join(", ") || "",
         description: job.description || "",
     });
 
     async function handleUpdate(e: React.FormEvent) {
         e.preventDefault();
-
         try {
             const result = await updateJobApplication(job._id, {
                 ...formData,
                 tags: formData.tags
                     .split(",")
-                    .map((t) => t.trim())
-                    .filter((t) => t.length > 0),
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0),
             });
 
             if (!result.error) {
                 setIsEditing(false);
             }
-        } catch (error) {
-            console.error("Failed to move job application: ", error);
+        } catch (err) {
+            console.error("Failed to move job application: ", err);
         }
     }
 
@@ -71,10 +74,13 @@ export default function JobApplicationCard({
             const result = await deleteJobApplication(job._id);
 
             if (result.error) {
-                console.log("Failed to delete job application: ", result.error);
+                console.error(
+                    "Failed to delete job application:",
+                    result.error,
+                );
             }
-        } catch (error) {
-            console.error("Failed to move job application: ", error);
+        } catch (err) {
+            console.error("Failed to move job application: ", err);
         }
     }
 
@@ -83,14 +89,16 @@ export default function JobApplicationCard({
             const result = await updateJobApplication(job._id, {
                 columnId: newColumnId,
             });
-        } catch (error) {
-            console.error("Failed to move job application: ", error);
+        } catch (err) {
+            console.error("Failed to move job application: ", err);
         }
     }
-
     return (
         <>
-            <Card className="cursor-pointer transition-shadow hover:shadow-lg bg-white group shadow-sm">
+            <Card
+                className="cursor-pointer transition-shadow hover:shadow-lg bg-white group shadow-sm"
+                {...dragHandleProps}
+            >
                 <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -119,8 +127,8 @@ export default function JobApplicationCard({
                             )}
                             {job.jobUrl && (
                                 <a
-                                    target="_blank"
                                     href={job.jobUrl}
+                                    target="_blank"
                                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
                                     onClick={(e) => e.stopPropagation()}
                                 >
@@ -128,7 +136,6 @@ export default function JobApplicationCard({
                                 </a>
                             )}
                         </div>
-
                         <div className="flex items-start gap-1">
                             <DropdownMenu>
                                 <DropdownMenuTrigger>
@@ -222,7 +229,6 @@ export default function JobApplicationCard({
                                     />
                                 </div>
                             </div>
-
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="location">Location</Label>
@@ -256,6 +262,7 @@ export default function JobApplicationCard({
                                 <Label htmlFor="jobUrl">Job URL</Label>
                                 <Input
                                     id="jobUrl"
+                                    type="url"
                                     placeholder="https://..."
                                     value={formData.jobUrl}
                                     onChange={(e) =>
@@ -268,7 +275,7 @@ export default function JobApplicationCard({
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="tags">
-                                    Tags (coma-separated)
+                                    Tags (comma-separated)
                                 </Label>
                                 <Input
                                     id="tags"
